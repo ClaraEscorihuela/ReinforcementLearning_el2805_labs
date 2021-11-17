@@ -36,7 +36,7 @@ class Maze:
     STEP_REWARD = -1
     GOAL_REWARD = 0
     IMPOSSIBLE_REWARD = -100
-    AVOID_REWARD = -10 #Reward to avoid been lcoated next to the minotaur
+    AVOID_REWARD = -2 #Reward to avoid been lcoated next to the minotaur
 
 
     def __init__(self, maze, weights=None, random_rewards=False):
@@ -71,7 +71,7 @@ class Maze:
                     states[s] = (i,j);
                     map[(i,j)] = s;
                     s += 1;
-        states['dead'] = -1 #we have introduced a new state dead
+        # states['dead'] = -1 #we have introduced a new state dead
         return states, map
 
     def __move(self, state, action):
@@ -108,12 +108,13 @@ class Maze:
             for a in range(self.n_actions):
                 next_s = self.__move(s,a);
                 transition_probabilities[next_s, s, a] = 1;
-
+                """
                 #WE HAVE CHANGED THIS PART FOR THE NEW STATE!!!!!!!!!!!!!!!!!!
                 if s == -1:
                     transition_probabilities[next_s, s, a] = 0
                     if next_s == -1:
                         transition_probabilities[next_s, s, a] = 1
+                """
 
         return transition_probabilities;
 
@@ -126,20 +127,25 @@ class Maze:
             for s in range(self.n_states):
                 for a in range(self.n_actions):
                     next_s = self.__move(s,a);
-                    # Rewrd for hitting a wall
+                    # Reward for hitting a wall
                     if s == next_s and a != self.STAY:
-                        rewards[s,a] = self.IMPOSSIBLE_REWARD;
+                        rewards[s, a] = self.IMPOSSIBLE_REWARD;
+                    # Reward for being killed by the Minotaur
+                    elif self.maze[self.states[next_s]] == 4:
+                        rewards[s, a] = self.IMPOSSIBLE_REWARD;
                     # Reward for reaching the exit //
                     elif s == next_s and self.maze[self.states[next_s]] == 2:
-                        rewards[s,a] = self.GOAL_REWARD;
+                        rewards[s, a] = self.GOAL_REWARD;
+                    # Reward for getting close to Minotaur
                     elif self.maze[self.states[next_s]] == 3:
                         rewards[s, a] = self.AVOID_REWARD;
 
                     # Reward for taking a step to an empty cell that is not the exit
                     else:
-                        rewards[s,a] = self.STEP_REWARD;
+                        rewards[s, a] = self.STEP_REWARD;
+                    # We're missing the reward for getting killed
 
-                    # If
+                    # If random rewards -> not needed in first exercise
                     if random_rewards and self.maze[self.states[next_s]]<0:
                         row, col = self.states[next_s];
                         # With probability 0.5 the reward is
@@ -326,7 +332,7 @@ def value_iteration(env, gamma, epsilon):
 def draw_maze(maze):
 
     # Map a color to each cell in the maze
-    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED};
+    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, 3: LIGHT_ORANGE, 4: LIGHT_RED, -6: LIGHT_RED, -1: LIGHT_RED};
 
     # Give a color to each cell
     rows,cols    = maze.shape;
@@ -363,7 +369,7 @@ def draw_maze(maze):
 def animate_solution(maze, path):
 
     # Map a color to each cell in the maze
-    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED};
+    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, 3: LIGHT_ORANGE, 4: LIGHT_RED, -6: LIGHT_RED, -1: LIGHT_RED};
 
     # Size of the maze
     rows,cols = maze.shape;
