@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 from IPython import display
+import random
 
 # Implemented methods
 methods = ['DynProg', 'ValIter']
@@ -71,7 +72,7 @@ class Maze:
             for j in range(self.maze.shape[1]):
                 for k in range(self.maze.shape[0]):
                     for l in range(self.maze.shape[1]):
-                        if (self.maze[i,j] != 1) and (self.maze[k,l] != 1):
+                        if (self.maze[i,j] != 1) or (self.maze[k,l] != 1):
                             states[s] = (i,j,k,l)
                             map[(i,j,k,l)] = s
                             s += 1
@@ -93,7 +94,7 @@ class Maze:
                               (self.maze[row,col] == 1)
         # Based on the impossiblity check return the next state.
         if hitting_maze_walls:
-            player_state = state #si estas en hidden et quedes en hidden
+            player_state = self.states[state][:2] #si estas en hidden et quedes en hidden
         else:
             player_state = (row, col) 
         
@@ -155,24 +156,27 @@ class Maze:
         if weights is None:
             for s in range(self.n_states):
                 for a in range(self.n_actions):
-                    next_s = self.__move(s,a)
-                    # Reward for hitting a wall
-                    if s == next_s and a != self.STAY:
-                        rewards[s, a] = self.IMPOSSIBLE_REWARD
-                    # Reward for being killed by the Minotaur
-                    elif self.maze[self.states[next_s]] == 4:
-                        rewards[s, a] = self.IMPOSSIBLE_REWARD
-                    # Reward for reaching the exit //
-                    elif s == next_s and self.maze[self.states[next_s]] == 2:
-                        rewards[s, a] = self.GOAL_REWARD
-                    # Reward for getting close to Minotaur
-                    elif self.maze[self.states[next_s]] == 3:
-                        rewards[s, a] = self.AVOID_REWARD
+                    _, next_s_list = self.__move(s,a)
+                    reward = []
+                    for next_s in next_s_list:
+                        # Reward for hitting a wall
+                        if self.states[s][:2] == self.states[next_s][:2] and a != self.STAY:
+                            reward.append(self.IMPOSSIBLE_REWARD)
+                        # Reward for being killed by the Minotaur
+                        elif self.states[next_s][:2] == self.states[next_s][2:]:
+                            reward.append(self.IMPOSSIBLE_REWARD)
+                        # Reward for reaching the exit //
+                        elif self.states[s][:2] == self.states[next_s][:2] and self.maze[self.states[next_s][:2]] == 2:
+                            reward.append(self.GOAL_REWARD)
+                        # Reward for getting close to Minotaur
+                        #elif abs(self.states[next_s][0] - self.states[next_s][2]) + abs(self.states[next_s][1] - self.states[next_s][3]):
+                        #    reward.append(self.AVOID_REWARD)
+                        # Reward for taking a step to an empty cell that is not the exit
+                        else:
+                            reward.append(self.STEP_REWARD)
+                        # We're missing the reward for getting killed
 
-                    # Reward for taking a step to an empty cell that is not the exit
-                    else:
-                        rewards[s, a] = self.STEP_REWARD
-                    # We're missing the reward for getting killed
+                    rewards[s, a] = sum(reward)/len(reward)
 
                     # If random rewards -> not needed in first exercise
                     if random_rewards and self.maze[self.states[next_s]]<0:
@@ -211,15 +215,28 @@ class Maze:
             s = self.map[start]
             # Add the starting position in the maze to the path
             path.append(start)
+            win = False
             while t < horizon-1:
                 # Move to next state given the policy and the current state
-                next_s = self.__move(s,policy[s,t])
+                _, next_s_list = self.__move(s,policy[s,t])
+                next_s = random.choice(next_s_list)
                 # Add the position in the maze corresponding to the next state
                 # to the path
                 path.append(self.states[next_s])
                 # Update time and state for next iteration
                 t +=1
                 s = next_s
+
+                if self.states[s][:2] == self.states[s][2:]:
+                    print("YOU'RE DEAD")
+                    break
+                elif self.maze[self.states[s][:2]] == 2:
+                    print("YOU WON at time = ", t)
+                    win = True
+                    break
+
+
+
         if method == 'ValIter':
             # Initialize current state, next state and time
             t = 1
@@ -242,7 +259,7 @@ class Maze:
                 path.append(self.states[next_s])
                 # Update time and state for next iteration
                 t +=1
-        return path
+        return path, win
 
 
     def show(self):
@@ -289,7 +306,7 @@ def dynamic_programming(env, horizon):
     V[:, T]      = np.max(Q,1)
     policy[:, T] = np.argmax(Q,1)
 
-    # The dynamic programming bakwards recursion
+    # The dynamic programming backwards recursion
     for t in range(T-1,-1,-1):
         # Update the value function acccording to the bellman equation
         for s in range(n_states):
@@ -434,15 +451,46 @@ def animate_solution(maze, path):
 
     # Update the color at each frame
     for i in range(len(path)):
-        grid.get_celld()[(path[i])].set_facecolor(LIGHT_ORANGE)
-        grid.get_celld()[(path[i])].get_text().set_text('Player')
+
         if i > 0:
-            if path[i] == path[i-1]:
-                grid.get_celld()[(path[i])].set_facecolor(LIGHT_GREEN)
-                grid.get_celld()[(path[i])].get_text().set_text('Player is out')
+            if maze[path[i][:2]]==2:
+                grid.get_celld()[(path[i][:2])].set_facecolor(LIGHT_GREEN)
+                grid.get_celld()[(path[i][:2])].get_text().set_text('Player is out')
+                grid.get_celld()[(path[i-1][2:])].set_facecolor(col_map[maze[path[i-1][2:]]])
+                grid.get_celld()[(path[i-1][2:])].get_text().set_text('')
+                grid.get_celld()[(path[i-1][:2])].set_facecolor(col_map[maze[path[i-1][:2]]])
+                grid.get_celld()[(path[i-1][:2])].get_text().set_text('')
+                break
             else:
-                grid.get_celld()[(path[i-1])].set_facecolor(col_map[maze[path[i-1]]])
-                grid.get_celld()[(path[i-1])].get_text().set_text('')
+                grid.get_celld()[(path[i-1][:2])].set_facecolor(col_map[maze[path[i-1][:2]]])
+                grid.get_celld()[(path[i-1][:2])].get_text().set_text('')
+                grid.get_celld()[(path[i-1][2:])].set_facecolor(col_map[maze[path[i-1][2:]]])
+                grid.get_celld()[(path[i-1][2:])].get_text().set_text('')
+
+        grid.get_celld()[(path[i][:2])].set_facecolor(LIGHT_ORANGE)
+        grid.get_celld()[(path[i][:2])].get_text().set_text('Player')
+
+        grid.get_celld()[(path[i][2:])].set_facecolor(LIGHT_PURPLE)
+        grid.get_celld()[(path[i][2:])].get_text().set_text('Minotaur')
+
         display.display(fig)
         display.clear_output(wait=True)
         time.sleep(1)
+
+
+
+def exit_probability(env):
+    T = 30
+    trials = 50
+    start = (0, 0, 4, 5)
+    figure = plt.figure()
+    c = np.zeros(T)
+    for t in range(T):
+        print('horizon ', t)
+        V, policy = dynamic_programming(env, t)
+        for i in range(trials):
+            path, win = env.simulate(start, policy, 'DynProg')
+            c[t] += win*1
+    plt.plot(c/trials)
+    plt.show()
+
