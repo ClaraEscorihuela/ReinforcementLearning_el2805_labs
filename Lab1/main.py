@@ -17,9 +17,12 @@ env = mz.Maze(maze)
 # Finite horizon
 horizon = 20
 # Solve the MDP problem with dynamic programming
-V, policy= mz.dynamic_programming(env,horizon)
+gamma   = 0.95;
+# Accuracy treshold
+epsilon = 0.0001;
+V, policy = mz.value_iteration(env, gamma, epsilon)
 
-method = 'DynProg'
+method = 'ValIter'
 start  = (0,0, 4,5)
 path, win = env.simulate(start, policy, method)
 

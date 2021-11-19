@@ -85,38 +85,44 @@ class Maze:
 
             :return tuple next_cell: Position (x,y) on the maze that agent transitions to.
         """
-        # Compute the future position given current (state, action)
-        row = self.states[state][0] + self.actions[action][0]
-        col = self.states[state][1] + self.actions[action][1]
-        # Is the future position an impossible one ?
-        hitting_maze_walls =  (row == -1) or (row == self.maze.shape[0]) or \
-                              (col == -1) or (col == self.maze.shape[1]) or \
-                              (self.maze[row,col] == 1)
-        # Based on the impossiblity check return the next state.
-        if hitting_maze_walls:
-            player_state = self.states[state][:2] #si estas en hidden et quedes en hidden
+
+        if self.states[state][:2] == self.states[state][2:]:
+            possible_next_state = [state]
+            c = 1
+
         else:
-            player_state = (row, col) 
-        
-        # Minotaur movement
-        if self.stay:
-            initial = 0
-        else:
-            initial = 1
-        
-        c = 0
-        possible_next_state = []
-        # Compute the future position given current (state, action)
-        for mov in range(initial,self.n_actions):
-            row = self.states[state][2] + self.actions[mov][0]
-            col = self.states[state][3] + self.actions[mov][1]
+            # Compute the future position given current (state, action)
+            row = self.states[state][0] + self.actions[action][0]
+            col = self.states[state][1] + self.actions[action][1]
             # Is the future position an impossible one ?
-            hitting_maze_walls = (row == -1) or (row == self.maze.shape[0]) or \
-                                 (col == -1) or (col == self.maze.shape[1]) or \
-                                 (self.maze[row, col] == 1)
-            if not hitting_maze_walls:
-                possible_next_state.append(self.map[(player_state[0], player_state[1], row, col)])
-                c +=1
+            hitting_maze_walls =  (row == -1) or (row == self.maze.shape[0]) or \
+                                  (col == -1) or (col == self.maze.shape[1]) or \
+                                  (self.maze[row,col] == 1)
+            # Based on the impossiblity check return the next state.
+            if hitting_maze_walls:
+                player_state = self.states[state][:2] #si estas en hidden et quedes en hidden
+            else:
+                player_state = (row, col)
+
+            # Minotaur movement
+            if self.stay:
+                initial = 0
+            else:
+                initial = 1
+
+            c = 0
+            possible_next_state = []
+            # Compute the future position given current (state, action)
+            for mov in range(initial,self.n_actions):
+                row = self.states[state][2] + self.actions[mov][0]
+                col = self.states[state][3] + self.actions[mov][1]
+                # Is the future position an impossible one ?
+                hitting_maze_walls = (row == -1) or (row == self.maze.shape[0]) or \
+                                     (col == -1) or (col == self.maze.shape[1]) or \
+                                     (self.maze[row, col] == 1)
+                if not hitting_maze_walls:
+                    possible_next_state.append(self.map[(player_state[0], player_state[1], row, col)])
+                    c +=1
         
         return 1/c, possible_next_state
 
@@ -206,6 +212,7 @@ class Maze:
             error = 'ERROR: the argument method must be in {}'.format(methods)
             raise NameError(error)
 
+        win = False
         path = list()
         if method == 'DynProg':
             # Deduce the horizon from the policy shape
@@ -215,7 +222,7 @@ class Maze:
             s = self.map[start]
             # Add the starting position in the maze to the path
             path.append(start)
-            win = False
+
             while t < horizon-1:
                 # Move to next state given the policy and the current state
                 _, next_s_list = self.__move(s,policy[s,t])
@@ -236,15 +243,19 @@ class Maze:
                     break
 
 
-
         if method == 'ValIter':
             # Initialize current state, next state and time
             t = 1
             s = self.map[start]
+            # Time at which you are going to die because of the poison
+            # -> geometrical distribution with mean 30
+            lifespan = np.random.geometric(1/30, size=1)[0]
+            print("Venom will kill you at time ", lifespan)
             # Add the starting position in the maze to the path
             path.append(start)
             # Move to next state given the policy and the current state
-            next_s = self.__move(s,policy[s])
+            _, next_s_list = self.__move(s,policy[s])
+            next_s = random.choice(next_s_list)
             # Add the position in the maze corresponding to the next state
             # to the path
             path.append(self.states[next_s])
@@ -253,12 +264,21 @@ class Maze:
                 # Update state
                 s = next_s
                 # Move to next state given the policy and the current state
-                next_s = self.__move(s,policy[s])
+                _, next_s_list = self.__move(s, policy[s])
+                next_s = random.choice(next_s_list)
                 # Add the position in the maze corresponding to the next state
                 # to the path
                 path.append(self.states[next_s])
                 # Update time and state for next iteration
                 t +=1
+
+                if self.states[s][:2] == self.states[s][2:] or t == lifespan:
+                    print("YOU'RE DEAD")
+                    break
+                elif self.maze[self.states[s][:2]] == 2:
+                    print("YOU WON at time = ", t)
+                    win = True
+                    break
         return path, win
 
 
@@ -271,6 +291,20 @@ class Maze:
         print(self.map)
         print('The rewards:')
         print(self.rewards)
+
+
+    def draw_policy(self, policy, time, minotaur):
+        actions = np.zeros((self.maze.shape[0],self.maze.shape[1]))
+
+        for indx,a in enumerate(policy[:,time]):
+            if self.states[indx][2:] == minotaur:
+                actions[self.states[indx][:2]] = a
+
+        draw_maze(self.maze, actions, minotaur)
+
+
+
+
 
 def dynamic_programming(env, horizon):
     """ Solves the shortest path problem using dynamic programming
@@ -375,7 +409,7 @@ def value_iteration(env, gamma, epsilon):
     # Return the obtained policy
     return V, policy
 
-def draw_maze(maze):
+def draw_maze(maze, actions = None, minotaur = (0,0)):
 
     # Map a color to each cell in the maze
     col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, 3: LIGHT_ORANGE, 4: LIGHT_RED, -6: LIGHT_RED, -1: LIGHT_RED}
@@ -411,6 +445,16 @@ def draw_maze(maze):
     for cell in tc:
         cell.set_height(1.0/rows)
         cell.set_width(1.0/cols)
+
+    if actions is not None:
+        dict_actions = {0: 'S', 1: 'L', 2: 'R', 3: 'U', 4: 'D'}
+        grid.get_celld()[minotaur].set_facecolor(LIGHT_PURPLE)
+        for i in range(actions.shape[0]):
+            for j in range(actions.shape[1]):
+                grid.get_celld()[(i,j)].get_text().set_text(dict_actions[actions[i,j]])
+
+
+
 
 def animate_solution(maze, path):
 
@@ -479,18 +523,35 @@ def animate_solution(maze, path):
 
 
 
-def exit_probability(env):
-    T = 30
-    trials = 50
-    start = (0, 0, 4, 5)
-    figure = plt.figure()
-    c = np.zeros(T)
-    for t in range(T):
-        print('horizon ', t)
-        V, policy = dynamic_programming(env, t)
+def exit_probability(env, method):
+    if method =='DynProg':
+        T = 30
+        trials = 100
+        start = (0, 0, 4, 5)
+        figure = plt.figure()
+        c = np.zeros(T)
+        for t in range(T):
+            print('horizon ', t)
+            V, policy = dynamic_programming(env, t)
+            for i in range(trials):
+                path, win = env.simulate(start, policy, method)
+                c[t] += win*1
+        plt.ylabel('Probability')
+        plt.xlabel('T')
+        plt.title('Exit probability')
+        plt.plot(c/trials)
+        plt.show()
+
+    else:
+        trials = 10000
+        start = (0, 0, 4, 5)
+        win_prob = 0
+        V, policy = value_iteration(env, gamma=0.95, epsilon=0.0001)
         for i in range(trials):
-            path, win = env.simulate(start, policy, 'DynProg')
-            c[t] += win*1
-    plt.plot(c/trials)
-    plt.show()
+            path, win = env.simulate(start, policy, method)
+            win_prob += win*1
+        return win_prob/trials
+
+
+
 
