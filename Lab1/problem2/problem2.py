@@ -26,7 +26,7 @@ k = env.action_space.n      # tells you the number of actions
 low, high = env.observation_space.low, env.observation_space.high #tells us the low, high limits for the state (state == pos,vel)
 
 # Parameters
-N_episodes = 100        # Number of episodes to run for training
+N_episodes = 500        # Number of episodes to run for training
 discount_factor = 1.    # Value of gamma
 
 
@@ -78,6 +78,8 @@ def choose_action(epsilon, w, basis):
     return action
 
 # Training process
+eta = np.array([[0,0],[1,0],[1,0],[1,1]]).transpose()
+w = np.zeros((np.shape(eta)[0],k))
 for i in range(N_episodes):
     # Reset enviroment data
     done = False
@@ -85,17 +87,16 @@ for i in range(N_episodes):
     eta = np.array([[0,0],[1,0],[1,0],[1,1]]).transpose()
     total_episode_reward = 0.
     epsilon = 0.01
-    w = np.zeros((np.shape(eta)[0],k))
     z = np.zeros((np.shape(eta)[0],k))
+
     gamma = 1
     lamda = 0.9
-    alpha = 0.01
+    alpha = 0.5
 
     while not done:
         # Take an action
         # env.action_space.n tells you the number of actions
         # available
-        env.render()
         basis = basis_function(eta, state)
         action = choose_action(epsilon, w, basis)
             
@@ -111,6 +112,7 @@ for i in range(N_episodes):
 
         #Update z
         z[:,action] = gamma*lamda* z[:,action]+basis
+        z = np.clip(z, -5, 5)
 
         #Update w
         delta = reward + gamma*Q_calculation(w, next_basis, next_action)-Q_calculation(w,basis,action)
