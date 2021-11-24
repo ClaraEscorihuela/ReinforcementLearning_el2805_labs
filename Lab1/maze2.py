@@ -39,8 +39,9 @@ class Maze:
     GOAL_REWARD = 0
     IMPOSSIBLE_REWARD = -100
     AVOID_REWARD = -2  # Reward to avoid been lcoated next to the minotaur
+    NO_KEY_REWARD = -50
 
-    def __init__(self, maze, stay=False):
+    def __init__(self, maze, weights=None, random_rewards=False, stay=False):
         """ Constructor of the environment Maze.
         """
         self.maze = maze
@@ -50,7 +51,8 @@ class Maze:
         self.n_actions = len(self.actions)
         self.n_states = len(self.states)
         self.transition_probabilities = self.__transitions()
-        self.rewards = self.__rewards()
+        self.rewards = self.__rewards(weights=weights,
+                                      random_rewards=random_rewards)
 
     def __actions(self):
         actions = dict()
@@ -63,18 +65,19 @@ class Maze:
 
     def __states(self):
         states = dict()
-        map = dict()
-
+        map = dict()  # numero de caselles
+        end = False
         s = 0
         for i in range(self.maze.shape[0]):
             for j in range(self.maze.shape[1]):
                 for k in range(self.maze.shape[0]):
                     for l in range(self.maze.shape[1]):
-                        if (self.maze[i, j] != 1):
-                            states[s] = (i, j, k, l)
-                            map[(i, j, k, l)] = s
-                            s += 1
-
+                        for key in range(2):
+                            if (self.maze[i, j] != 1):
+                                states[s] = (i, j, k, l, key)
+                                map[(i, j, k, l, key)] = s
+                                s += 1
+        # states['dead'] = -1 #we have introduced a new state dead
         return states, map
 
     def move(self, state, action):
@@ -103,11 +106,13 @@ class Maze:
             else:
                 player_state = (row, col)
 
+
             # Key
             if self.states[state][-1] == 1 or self.maze[player_state] == 5:
                 key = 1
             else:
                 key = 0
+
 
             # Minotaur movement
             if self.stay:
@@ -117,6 +122,7 @@ class Maze:
 
             c = 0
             possible_next_state = []
+            distance = []
             # Compute the future position given current (state, action)
             for mov in range(initial, self.n_actions):
                 row = self.states[state][2] + self.actions[mov][0]
@@ -125,10 +131,17 @@ class Maze:
                 hitting_maze_walls = (row == -1) or (row == self.maze.shape[0]) or \
                                      (col == -1) or (col == self.maze.shape[1])
                 if not hitting_maze_walls:
-                    possible_next_state.append(self.map[(player_state[0], player_state[1], row, col)])
+                    possible_next_state.append(self.map[(player_state[0], player_state[1], row, col, key)])
+                    distance.append(abs(player_state[0]-row)+abs(player_state[1]-col)) #Manhattan distance
                     c += 1
 
-        return 1 / c, possible_next_state
+            minims = np.where(np.asarray(distance) == min(distance))[0]
+
+            probability = np.ones(len(distance))*2/(3*c)
+            probability[minims] += 1/(3*len(minims))
+
+
+        return probability, possible_next_state
 
     def __transitions(self):
         """ Computes the transition probabilities for every state action pair.
@@ -146,7 +159,7 @@ class Maze:
                 minotaur_prob, next_s_list = self.move(s, a)
 
                 for i, next_s in enumerate(next_s_list):
-                    transition_probabilities[next_s, s, a] = 1 * minotaur_prob
+                    transition_probabilities[next_s, s, a] = 1 * minotaur_prob[i]
                 """
                 #WE HAVE CHANGED THIS PART FOR THE NEW STATE!!!!!!!!!!!!!!!!!!
                 if s == -1:
@@ -157,34 +170,58 @@ class Maze:
 
         return transition_probabilities
 
-    def __rewards(self):
+    def __rewards(self, weights=None, random_rewards=None):
 
         rewards = np.zeros((self.n_states, self.n_actions))
 
-        for s in range(self.n_states):
-            for a in range(self.n_actions):
-                _, next_s_list = self.move(s, a)
-                reward = []
-                for next_s in next_s_list:
-                    # Reward for hitting a wall
-                    if self.states[s][:2] == self.states[next_s][:2] and a != self.STAY:
-                        reward.append(self.IMPOSSIBLE_REWARD)
-                    # Reward for being killed by the Minotaur
-                    elif self.states[next_s][:2] == self.states[next_s][2:]:
-                        reward.append(self.IMPOSSIBLE_REWARD)
-                    # Reward for reaching the exit //
-                    elif self.states[s][:2] == self.states[next_s][:2] and self.maze[self.states[next_s][:2]] == 2:
-                        reward.append(self.GOAL_REWARD)
-                    # Reward for getting close to Minotaur
-                    elif abs(self.states[next_s][0] - self.states[next_s][2]) + abs(
-                            self.states[next_s][1] - self.states[next_s][3]):
-                        reward.append(self.AVOID_REWARD)
-                    # Reward for taking a step to an empty cell that is not the exit
-                    else:
-                        reward.append(self.STEP_REWARD)
-                    # We're missing the reward for getting killed
+        # If the rewards are not described by a weight matrix
+        if weights is None:
+            for s in range(self.n_states):
+                for a in range(self.n_actions):
+                    _, next_s_list = self.move(s, a)
+                    reward = []
+                    for next_s in next_s_list:
+                        # Reward for hitting a wall
+                        if self.states[s][:2] == self.states[next_s][:2] and a != self.STAY:
+                            reward.append(self.IMPOSSIBLE_REWARD)
+                        # Reward for being killed by the Minotaur
+                        elif self.states[next_s][:2] == self.states[next_s][2:-1]:
+                            reward.append(self.IMPOSSIBLE_REWARD)
+                        # Reward for reaching the exit //
+                        elif self.states[s][:2] == self.states[next_s][:2] and self.maze[self.states[next_s][:2]] == 2:
+                            reward.append(self.GOAL_REWARD)
+                        elif self.maze[self.states[next_s][:2]] == 2 and self.states[next_s][-1] == 0:
+                            reward.append(self.NO_KEY_REWARD)
+                        # Reward for getting close to Minotaur
+                        # elif abs(self.states[next_s][0] - self.states[next_s][2]) + abs(self.states[next_s][1] - self.states[next_s][3]):
+                        #    reward.append(self.AVOID_REWARD)
+                        # Reward for taking a step to an empty cell that is not the exit
+                        else:
+                            reward.append(self.STEP_REWARD)
+                        # We're missing the reward for getting killed
 
-                rewards[s, a] = sum(reward) / len(reward)
+                    rewards[s, a] = sum(reward) / len(reward)
+
+                    # If random rewards -> not needed in first exercise
+                    if random_rewards and self.maze[self.states[next_s]] < 0:
+                        row, col = self.states[next_s]
+                        # With probability 0.5 the reward is
+                        r1 = (1 + abs(self.maze[row, col])) * rewards[s, a]
+                        # With probability 0.5 the reward is
+                        r2 = rewards[s, a]
+                        # The average reward
+                        rewards[s, a] = 0.5 * r1 + 0.5 * r2
+
+
+
+        # If the weights are descrobed by a weight matrix
+        else:
+            for s in range(self.n_states):
+                for a in range(self.n_actions):
+                    next_s = self.move(s, a)
+                    i, j = self.states[next_s]
+                    # Simply put the reward as the weights o the next state.
+                    rewards[s, a] = weights[i][j]
 
         return rewards
 
@@ -206,8 +243,8 @@ class Maze:
 
             while t < horizon - 1:
                 # Move to next state given the policy and the current state
-                _, next_s_list = self.move(s, policy[s, t])
-                next_s = random.choice(next_s_list)
+                prob, next_s_list = self.move(s, policy[s, t])
+                next_s = random.choices(next_s_list, weights=prob, k=1)[0]
                 # Add the position in the maze corresponding to the next state
                 # to the path
                 path.append(self.states[next_s])
@@ -215,7 +252,7 @@ class Maze:
                 t += 1
                 s = next_s
 
-                if self.states[s][:2] == self.states[s][2] or t == horizon - 1:
+                if self.states[s][:2] == self.states[s][2:-1] or t == horizon-1:
                     print("YOU'RE DEAD")
                     break
                 elif self.maze[self.states[s][:2]] == 2:
@@ -235,8 +272,8 @@ class Maze:
             # Add the starting position in the maze to the path
             path.append(start)
             # Move to next state given the policy and the current state
-            _, next_s_list = self.move(s, policy[s])
-            next_s = random.choice(next_s_list)
+            prob, next_s_list = self.move(s, policy[s])
+            next_s = random.choices(next_s_list, weights=prob,k=1)[0]
             # Add the position in the maze corresponding to the next state
             # to the path
             path.append(self.states[next_s])
@@ -245,15 +282,15 @@ class Maze:
                 # Update state
                 s = next_s
                 # Move to next state given the policy and the current state
-                _, next_s_list = self.move(s, policy[s])
-                next_s = random.choice(next_s_list)
+                prob, next_s_list = self.move(s, policy[s])
+                next_s = random.choices(next_s_list, weights=prob, k=1)[0]
                 # Add the position in the maze corresponding to the next state
                 # to the path
                 path.append(self.states[next_s])
                 # Update time and state for next iteration
                 t += 1
 
-                if self.states[s][:2] == self.states[s][2] or t == lifespan:
+                if self.states[s][:2] == self.states[s][2:-1] or t == lifespan:
                     print("YOU'RE DEAD")
                     end = True
                 elif self.maze[self.states[s][:2]] == 2:
@@ -277,7 +314,7 @@ class Maze:
         actions = np.zeros((self.maze.shape[0], self.maze.shape[1]))
 
         for indx, a in enumerate(policy[:, time]):
-            if self.states[indx][2:] == minotaur:
+            if self.states[indx][2:-1] == minotaur:
                 actions[self.states[indx][:2]] = a
 
         draw_maze(self.maze, actions, minotaur)
@@ -395,10 +432,13 @@ def epsilon_soft(epsilon, state, Q):
     return action
 
 
-def q_learning(env, gamma, n_episodes, T, player_state, epsilon, alpha_exponent=2 / 3):
+
+def q_learning(env, gamma, n_episodes, T, player_state, epsilon, alpha_exponent = 2/3):
+
     r = env.rewards
     n_states = env.n_states
     n_actions = env.n_actions
+
 
     # Required variables and temporary ones for the VI to run
     Q = np.zeros((n_states, n_actions))
@@ -406,16 +446,9 @@ def q_learning(env, gamma, n_episodes, T, player_state, epsilon, alpha_exponent=
     reward_list = []
     value_list = []
 
+
     for e in range(n_episodes):
 
-        """
-        #To randomly variate the initial position of the minotaur
-        minotaur_state = np.where(env.maze == 0)
-        indx = np.random.choice(np.arange(len(minotaur_state)))
-        x = [minotaur_state[0][indx],minotaur_state[1][indx]]
-
-        initial_state = env.map[(player_state[0],player_state[1],x[0],x[1])]
-        """
         initial_state = env.map[player_state]
         state = initial_state
         total_episode_reward = 0
@@ -424,11 +457,11 @@ def q_learning(env, gamma, n_episodes, T, player_state, epsilon, alpha_exponent=
             action = epsilon_soft(epsilon, state, Q)
 
             # Move to next state given the policy and the current state
-            _, next_s_list = env.move(state, action)
-            next_state = random.choice(next_s_list)
+            prob, next_s_list = env.move(state, action)
+            next_state = random.choices(next_s_list, weights=prob, k=1)[0]
             reward = r[state, action]
 
-            alpha = 1 / (n[state]) ** (alpha_exponent)
+            alpha = 1 / (n[state] ** alpha_exponent)
 
             Q[state, action] = Q[state, action] + alpha * (reward + gamma * np.max(Q[next_state, :]) - Q[state, action])
 
@@ -445,8 +478,9 @@ def q_learning(env, gamma, n_episodes, T, player_state, epsilon, alpha_exponent=
     return Q, policy, reward_list, value_list
 
 
-def sarsa(env, gamma, n_episodes, T, player_state, epsilon_in=0.1, epsilon_decay=False, delta=0.7,
-          alpha_exponent=2 / 3):
+
+def sarsa(env, gamma, n_episodes, T, player_state, epsilon_in = 0.1, epsilon_decay = False, delta = 0.7, alpha_exponent = 2/3):
+
     r = env.rewards
     n_states = env.n_states
     n_actions = env.n_actions
@@ -462,19 +496,18 @@ def sarsa(env, gamma, n_episodes, T, player_state, epsilon_in=0.1, epsilon_decay
 
         state = initial_state
         total_episode_reward = 0
-        epsilon = 1 / (e + 1) ** delta if epsilon_decay else epsilon_in
+        epsilon = 1/(e+1) ** delta if epsilon_decay else epsilon_in
 
         for t in range(T):
             action = epsilon_soft(epsilon, state, Q)
-            _, next_s_list = env.move(state, action)
-            next_state = random.choice(next_s_list)
+            prob, next_s_list = env.move(state, action)
+            next_state = random.choices(next_s_list, weights=prob, k=1)[0]
             reward = r[state, action]
             next_action = epsilon_soft(epsilon, next_state, Q)
 
-            alpha = 1 / (n[state]) ** (alpha_exponent)
+            alpha = 1 / (n[state] ** alpha_exponent)
 
-            Q[state, action] = Q[state, action] + alpha * (
-                        reward + gamma * Q[next_state, next_action] - Q[state, action])
+            Q[state, action] = Q[state, action] + alpha * (reward + gamma * Q[next_state, next_action] - Q[state, action])
 
             total_episode_reward += reward
             state = next_state
@@ -487,6 +520,9 @@ def sarsa(env, gamma, n_episodes, T, player_state, epsilon_in=0.1, epsilon_decay
     policy = np.argmax(Q, 1)
 
     return Q, policy, reward_list, value_list
+
+
+
 
 
 def draw_maze(maze, actions=None, minotaur=(0, 0)):
@@ -535,7 +571,7 @@ def draw_maze(maze, actions=None, minotaur=(0, 0)):
 
 def animate_solution(maze, path):
     # Map a color to each cell in the maze
-    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, 3: LIGHT_ORANGE, 4: LIGHT_RED, 5: CYAN, -6: LIGHT_RED, -1: LIGHT_RED}
+    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, 3: LIGHT_ORANGE, 4: LIGHT_RED, 5:CYAN, -6: LIGHT_RED, -1: LIGHT_RED}
 
     # Size of the maze
     rows, cols = maze.shape
@@ -575,22 +611,22 @@ def animate_solution(maze, path):
             if maze[path[i][:2]] == 2:
                 grid.get_celld()[(path[i][:2])].set_facecolor(LIGHT_GREEN)
                 grid.get_celld()[(path[i][:2])].get_text().set_text('Player is out')
-                grid.get_celld()[(path[i - 1][2:])].set_facecolor(col_map[maze[path[i - 1][2:]]])
-                grid.get_celld()[(path[i - 1][2:])].get_text().set_text('')
+                grid.get_celld()[(path[i - 1][2:-1])].set_facecolor(col_map[maze[path[i - 1][2:-1]]])
+                grid.get_celld()[(path[i - 1][2:-1])].get_text().set_text('')
                 grid.get_celld()[(path[i - 1][:2])].set_facecolor(col_map[maze[path[i - 1][:2]]])
                 grid.get_celld()[(path[i - 1][:2])].get_text().set_text('')
                 break
             else:
                 grid.get_celld()[(path[i - 1][:2])].set_facecolor(col_map[maze[path[i - 1][:2]]])
                 grid.get_celld()[(path[i - 1][:2])].get_text().set_text('')
-                grid.get_celld()[(path[i - 1][2:])].set_facecolor(col_map[maze[path[i - 1][2:]]])
-                grid.get_celld()[(path[i - 1][2:])].get_text().set_text('')
+                grid.get_celld()[(path[i - 1][2:-1])].set_facecolor(col_map[maze[path[i - 1][2:-1]]])
+                grid.get_celld()[(path[i - 1][2:-1])].get_text().set_text('')
 
         grid.get_celld()[(path[i][:2])].set_facecolor(LIGHT_ORANGE)
         grid.get_celld()[(path[i][:2])].get_text().set_text('Player')
 
-        grid.get_celld()[(path[i][2:])].set_facecolor(LIGHT_PURPLE)
-        grid.get_celld()[(path[i][2:])].get_text().set_text('Minotaur')
+        grid.get_celld()[(path[i][2:-1])].set_facecolor(LIGHT_PURPLE)
+        grid.get_celld()[(path[i][2:-1])].get_text().set_text('Minotaur')
 
         display.display(fig)
         display.clear_output(wait=True)
@@ -600,8 +636,8 @@ def animate_solution(maze, path):
 def exit_probability(env, method):
     if method == 'DynProg':
         T = 30
-        trials = 1000
-        start = (0, 0, 6, 5)
+        trials = 100
+        start = (0, 0, 4, 5)
         figure = plt.figure()
         c = np.zeros(T)
         for t in range(T):
@@ -618,7 +654,7 @@ def exit_probability(env, method):
 
     else:
         trials = 10000
-        start = (0, 0, 6, 5)
+        start = (0, 0, 4, 5)
         win_prob = 0
         V, policy = value_iteration(env, gamma=0.95, epsilon=0.0001)
         for i in range(trials):
