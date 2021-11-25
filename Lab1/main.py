@@ -14,7 +14,7 @@ maze = np.array([
 
 env = mz.Maze(maze)
 # Finite horizon
-horizon = 30
+horizon = 20
 """
 # Solve the MDP problem with dynamic programming
 V, policy= mz.dynamic_programming(env,horizon)
