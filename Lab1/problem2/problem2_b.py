@@ -153,7 +153,7 @@ for i in range(N_episodes):
         #ALPHA REDUCTION WORKS EXTREMELLY WELL!!!
         # If win, scale alpha by .8 or .6 if the agent wins
         reduce_counter += 1
-        alpha *= 0.9 - 0.2 * (total_episode_reward > -130)
+        alpha *= 0.8 - 0.2 * (total_episode_reward > -130)
 
     # Append episode reward
     episode_reward_list.append(total_episode_reward)
