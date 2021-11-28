@@ -266,8 +266,8 @@ class Maze:
             t = 1
             s = self.map[start]
             # Time at which you are going to die because of the poison
-            # -> geometrical distribution with mean 30
-            lifespan = np.random.geometric(1 / 30, size=1)[0]
+            # -> geometrical distribution with mean 50
+            lifespan = np.random.geometric(1 / 50, size=1)[0]
             print("Venom will kill you at time ", lifespan)
             # Add the starting position in the maze to the path
             path.append(start)
@@ -433,7 +433,7 @@ def epsilon_soft(epsilon, state, Q):
 
 
 
-def q_learning(env, gamma, n_episodes, T, player_state, epsilon, alpha_exponent = 2/3):
+def q_learning(env, gamma, n_episodes, player_state, epsilon, alpha_exponent = 2/3):
 
     r = env.rewards
     n_states = env.n_states
@@ -453,6 +453,7 @@ def q_learning(env, gamma, n_episodes, T, player_state, epsilon, alpha_exponent 
         state = initial_state
         total_episode_reward = 0
 
+        T = np.random.geometric(1 / 50, size=1)[0]
         for t in range(T):
             action = epsilon_soft(epsilon, state, Q)
 
@@ -479,7 +480,7 @@ def q_learning(env, gamma, n_episodes, T, player_state, epsilon, alpha_exponent 
 
 
 
-def sarsa(env, gamma, n_episodes, T, player_state, epsilon_in = 0.1, epsilon_decay = False, delta = 0.7, alpha_exponent = 2/3):
+def sarsa(env, gamma, n_episodes, player_state, epsilon_in = 0.1, epsilon_decay = False, delta = 0.7, alpha_exponent = 2/3):
 
     r = env.rewards
     n_states = env.n_states
@@ -498,6 +499,8 @@ def sarsa(env, gamma, n_episodes, T, player_state, epsilon_in = 0.1, epsilon_dec
         total_episode_reward = 0
         epsilon = 1/(e+1) ** delta if epsilon_decay else epsilon_in
 
+        #Lifespan changes according to venom
+        T = np.random.geometric(1 / 50, size=1)[0]
         for t in range(T):
             action = epsilon_soft(epsilon, state, Q)
             prob, next_s_list = env.move(state, action)
