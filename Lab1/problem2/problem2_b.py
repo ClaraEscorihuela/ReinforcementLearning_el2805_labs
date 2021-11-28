@@ -57,6 +57,7 @@ std_plus_reward_episode_list = [] #Used to calcular std reward for each episode
 std_less_reward_episode_list = []
 
 
+
 # Functions used during training
 def running_average(x, N):
     ''' Function used to compute the running mean
@@ -134,6 +135,8 @@ for i in range(N_episodes):
 
         basis = basis_function(ETA, state) #Define the basis
         Q = np.dot(W,basis) #This vector results on [Q(action1,n bases),Q(action2,n bases),Q(action3,bases)]
+        action_random = np.random.randint(0, k)
+        action_maximum_Q = np.argmax(Q)
 
         action = choose_action(epsilon, Q) #Choose Action
 
@@ -169,8 +172,8 @@ for i in range(N_episodes):
 
     if alpha_reduction and total_episode_reward > -200:
         #ALPHA REDUCTION WORKS EXTREMELLY WELL!!!
-        # Scale alpha ALWAYS, but make it even smaller if the agent wins
-        counter_reduction += 1
+        # If win, scale alpha by .8 or .6 if the agent wins
+        reduce_counter += 1
         alpha *= 0.9 - 0.2 * (total_episode_reward > -130)
 
     # Append episode reward

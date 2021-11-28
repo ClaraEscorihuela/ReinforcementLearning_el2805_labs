@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import time
 from IPython import display
 import random
+import copy
 
 # Implemented methods
 methods = ['DynProg', 'ValIter']
@@ -36,10 +37,11 @@ class Maze:
 
     # Reward values
     STEP_REWARD = -1
-    GOAL_REWARD = 0
+    GOAL_REWARD = 10
     IMPOSSIBLE_REWARD = -100
     AVOID_REWARD = -2  # Reward to avoid been lcoated next to the minotaur
     NO_KEY_REWARD = -50
+    KEY_REWARD = 10
 
     def __init__(self, maze, weights=None, random_rewards=False, stay=False):
         """ Constructor of the environment Maze.
@@ -188,7 +190,8 @@ class Maze:
                         elif self.states[next_s][:2] == self.states[next_s][2:-1]:
                             reward.append(self.IMPOSSIBLE_REWARD)
                         # Reward for reaching the exit //
-                        elif self.states[s][:2] == self.states[next_s][:2] and self.maze[self.states[next_s][:2]] == 2:
+                        elif (self.states[s][:2] == self.states[next_s][:2] and self.maze[self.states[next_s][:2]] == 2) \
+                                or (self.maze[self.states[next_s][:2]] == 2 and self.states[next_s][-1] == 1):
                             reward.append(self.GOAL_REWARD)
                         elif self.maze[self.states[next_s][:2]] == 2 and self.states[next_s][-1] == 0:
                             reward.append(self.NO_KEY_REWARD)
@@ -196,6 +199,8 @@ class Maze:
                         # elif abs(self.states[next_s][0] - self.states[next_s][2]) + abs(self.states[next_s][1] - self.states[next_s][3]):
                         #    reward.append(self.AVOID_REWARD)
                         # Reward for taking a step to an empty cell that is not the exit
+                        elif self.maze[self.states[next_s][:2]] == 5 and self.states[s][-1] == 0:
+                            reward.append(self.KEY_REWARD)
                         else:
                             reward.append(self.STEP_REWARD)
                         # We're missing the reward for getting killed
@@ -225,7 +230,7 @@ class Maze:
 
         return rewards
 
-    def simulate(self, start, policy, method):
+    def simulate(self, start, policy, method, venom = True):
         if method not in methods:
             error = 'ERROR: the argument method must be in {}'.format(methods)
             raise NameError(error)
@@ -267,8 +272,11 @@ class Maze:
             s = self.map[start]
             # Time at which you are going to die because of the poison
             # -> geometrical distribution with mean 50
-            lifespan = np.random.geometric(1 / 50, size=1)[0]
-            print("Venom will kill you at time ", lifespan)
+            if venom:
+                lifespan = np.random.geometric(1 / 50, size=1)[0]
+                print("Venom will kill you at time ", lifespan)
+            else:
+                lifespan = 200
             # Add the starting position in the maze to the path
             path.append(start)
             # Move to next state given the policy and the current state
@@ -421,7 +429,7 @@ def value_iteration(env, gamma, epsilon):
     # Compute policy
     policy = np.argmax(Q, 1)
     # Return the obtained policy
-    return V, policy
+    return V, policy, Q
 
 
 def epsilon_soft(epsilon, state, Q):
@@ -432,43 +440,64 @@ def epsilon_soft(epsilon, state, Q):
     return action
 
 
-
-def q_learning(env, gamma, n_episodes, player_state, epsilon, alpha_exponent = 2/3):
+def q_learning(env, gamma, n_episodes, player_state, epsilon, alpha_exponent=2/3, Q_initialization=None):
 
     r = env.rewards
     n_states = env.n_states
     n_actions = env.n_actions
 
+    # Initialize Q, terminal states with 0
+    if Q_initialization is None:
+        Q = - np.random.uniform(1, 20, (n_states, n_actions))
+    else:
+        Q = copy.deepcopy(Q_initialization)
 
-    # Required variables and temporary ones for the VI to run
-    Q = np.zeros((n_states, n_actions))
-    n = np.ones(n_states)
+    # Terminal states -> Q(terminal,·)=0
+    for i in range(n_states):
+        if env.states[i][:2] == env.states[i][2:-1] or env.maze[env.states[i][:2]]==2:
+            Q[i,:]=np.zeros(n_actions)
+
+    # Initialization
+    n = np.zeros((n_states, n_actions))
     reward_list = []
     value_list = []
 
-
     for e in range(n_episodes):
 
+        # Show progress
+        if e % 10000 == 0:
+            print("Iteration ", e)
+
+        # Initialize episode
         initial_state = env.map[player_state]
         state = initial_state
         total_episode_reward = 0
+        end = False
+        t=0
 
-        T = np.random.geometric(1 / 50, size=1)[0]
-        for t in range(T):
+        while not end:
+
+            # Choose and action and observe R and S'
             action = epsilon_soft(epsilon, state, Q)
-
-            # Move to next state given the policy and the current state
             prob, next_s_list = env.move(state, action)
             next_state = random.choices(next_s_list, weights=prob, k=1)[0]
             reward = r[state, action]
 
-            alpha = 1 / (n[state] ** alpha_exponent)
+            # Update alpha
+            n[state,action] += 1
+            alpha = 1 / (n[state, action] ** alpha_exponent)
 
+            # Update Q
             Q[state, action] = Q[state, action] + alpha * (reward + gamma * np.max(Q[next_state, :]) - Q[state, action])
 
             total_episode_reward += reward
             state = next_state
             n[state] += 1
+            t += 1
+
+            # Stop when reaching a terminal state
+            if env.states[state][:2] == env.states[state][2:-1] or env.maze[env.states[state][:2]] == 2 or t == 200:
+                end = True
 
         reward_list.append(total_episode_reward)
         value_list.append(np.max(Q, 1)[initial_state])
@@ -480,41 +509,61 @@ def q_learning(env, gamma, n_episodes, player_state, epsilon, alpha_exponent = 2
 
 
 
-def sarsa(env, gamma, n_episodes, player_state, epsilon_in = 0.1, epsilon_decay = False, delta = 0.7, alpha_exponent = 2/3):
+def sarsa(env, gamma, n_episodes, player_state, epsilon_in = 0.1, epsilon_decay = False, delta = 0.7, alpha_exponent = 2/3,Q_initialization=None):
 
     r = env.rewards
     n_states = env.n_states
     n_actions = env.n_actions
 
-    # Required variables and temporary ones for the VI to run
-    Q = np.zeros((n_states, n_actions))
-    n = np.ones(n_states)
+    # Initialize Q, terminal states with 0
+    if Q_initialization is None:
+        Q = - np.random.uniform(1, 20, (n_states, n_actions))
+    else:
+        Q = copy.deepcopy(Q_initialization)
+
+    # Terminal states -> Q(terminal,·)=0
+    for i in range(n_states):
+        if env.states[i][:2] == env.states[i][2:-1] or env.maze[env.states[i][:2]]==2:
+            Q[i,:]=np.zeros(n_actions)
+
+    # Initialization
+    n = np.zeros((n_states, n_actions))
     reward_list = []
     value_list = []
-    initial_state = env.map[player_state]
 
     for e in range(n_episodes):
 
+        # Show progress
+        if e % 10000 == 0:
+            print("Iteration ", e)
+
+        initial_state = env.map[player_state]
         state = initial_state
         total_episode_reward = 0
-        epsilon = 1/(e+1) ** delta if epsilon_decay else epsilon_in
+        epsilon = 1/((e+1) ** delta) if epsilon_decay else epsilon_in
 
-        #Lifespan changes according to venom
-        T = np.random.geometric(1 / 50, size=1)[0]
-        for t in range(T):
-            action = epsilon_soft(epsilon, state, Q)
+        end = False
+        t = 0
+        action = epsilon_soft(epsilon, state, Q)
+        while not end:
             prob, next_s_list = env.move(state, action)
             next_state = random.choices(next_s_list, weights=prob, k=1)[0]
             reward = r[state, action]
             next_action = epsilon_soft(epsilon, next_state, Q)
 
-            alpha = 1 / (n[state] ** alpha_exponent)
+            n[state, action] += 1
+            alpha = 1 / (n[state,action] ** alpha_exponent)
 
             Q[state, action] = Q[state, action] + alpha * (reward + gamma * Q[next_state, next_action] - Q[state, action])
 
             total_episode_reward += reward
             state = next_state
-            n[state] += 1
+            action = next_action
+            t += 1
+
+            # Stop when reaching a terminal state
+            if env.states[state][:2] == env.states[state][2:-1] or env.maze[env.states[state][:2]] == 2 or t == 200:
+                end = True
 
         reward_list.append(total_episode_reward)
         value_list.append(np.max(Q, 1)[initial_state])
@@ -523,9 +572,6 @@ def sarsa(env, gamma, n_episodes, player_state, epsilon_in = 0.1, epsilon_decay 
     policy = np.argmax(Q, 1)
 
     return Q, policy, reward_list, value_list
-
-
-
 
 
 def draw_maze(maze, actions=None, minotaur=(0, 0)):
@@ -608,7 +654,11 @@ def animate_solution(maze, path):
         cell.set_width(1.0 / cols)
 
     # Update the color at each frame
+    player_color = LIGHT_ORANGE
     for i in range(len(path)):
+        if path[i][-1] == 1:
+            player_color = CYAN
+            col_map[5] = WHITE
 
         if i > 0:
             if maze[path[i][:2]] == 2:
@@ -625,7 +675,7 @@ def animate_solution(maze, path):
                 grid.get_celld()[(path[i - 1][2:-1])].set_facecolor(col_map[maze[path[i - 1][2:-1]]])
                 grid.get_celld()[(path[i - 1][2:-1])].get_text().set_text('')
 
-        grid.get_celld()[(path[i][:2])].set_facecolor(LIGHT_ORANGE)
+        grid.get_celld()[(path[i][:2])].set_facecolor(player_color)
         grid.get_celld()[(path[i][:2])].get_text().set_text('Player')
 
         grid.get_celld()[(path[i][2:-1])].set_facecolor(LIGHT_PURPLE)
@@ -636,31 +686,14 @@ def animate_solution(maze, path):
         time.sleep(1)
 
 
-def exit_probability(env, method):
-    if method == 'DynProg':
-        T = 30
-        trials = 100
-        start = (0, 0, 4, 5)
-        figure = plt.figure()
-        c = np.zeros(T)
-        for t in range(T):
-            print('horizon ', t)
-            V, policy = dynamic_programming(env, t)
-            for i in range(trials):
-                path, win = env.simulate(start, policy, method)
-                c[t] += win * 1
-        plt.ylabel('Probability')
-        plt.xlabel('T')
-        plt.title('Exit probability')
-        plt.plot(c / trials)
-        plt.show()
-
-    else:
-        trials = 10000
-        start = (0, 0, 4, 5)
-        win_prob = 0
-        V, policy = value_iteration(env, gamma=0.95, epsilon=0.0001)
-        for i in range(trials):
-            path, win = env.simulate(start, policy, method)
-            win_prob += win * 1
-        return win_prob / trials
+def exit_probability(env, policy, venom = True):
+    trials = 10000
+    start = (0, 0, 6, 5, 0)
+    win_prob = 0
+    time_to_escape = []
+    for i in range(trials):
+        path, win = env.simulate(start, policy, 'ValIter', venom)
+        win_prob += win * 1
+        if win:
+            time_to_escape.append(len(path))
+    return win_prob / trials, sum(time_to_escape)/len(time_to_escape)

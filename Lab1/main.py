@@ -26,8 +26,9 @@ path, win = env.simulate(start, policy, method)
 
 
 
-Q, policy, reward_list, value_list = mz.q_learning(env, gamma=0.95, n_episodes=50000, T=30, epsilon= 0.1, player_state=(0,0,6,5,0), alpha_exponent=0.8)
-
+Q, policy, reward_list, value_list = mz.q_learning(env, gamma=0.95, n_episodes=50000,
+                                                   epsilon= 0.1, player_state=(0,0,6,5,0), alpha_exponent=0.8, Q_initialization=np.zeros((env.n_states,env.n_actions)))
+prob, time_to_escape = mz.exit_probability(env, policy)
 
 print("Mean reward per thousand episodes")
 for i in range(50):
