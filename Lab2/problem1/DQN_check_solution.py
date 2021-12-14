@@ -32,7 +32,7 @@ def running_average(x, N):
 
 # Load model
 try:
-    model = torch.load('neural-network-1.pth')
+    model = torch.load('main_network_1.pth')
     print('Network model: {}'.format(model))
 except:
     print('File neural-network-1.pth not found!')
@@ -52,6 +52,7 @@ episode_reward_list = []  # Used to store episodes reward
 # Simulate episodes
 print('Checking solution...')
 EPISODES = trange(N_EPISODES, desc='Episode: ', leave=True)
+
 for i in EPISODES:
     EPISODES.set_description("Episode {}".format(i))
     # Reset enviroment data
