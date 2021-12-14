@@ -1,17 +1,6 @@
-# Copyright [2020] [KTH Royal Institute of Technology] Licensed under the
-# Educational Community License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may
-# obtain a copy of the License at http://www.osedu.org/licenses/ECL-2.0
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an "AS IS"
-# BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
-# or implied. See the License for the specific language governing
-# permissions and limitations under the License.
-#
-# Course: EL2805 - Reinforcement Learning - Lab 1 Problem 4
-# Code author: [Alessio Russo - alessior@kth.se]
-# Last update: 6th October 2020, by alessior@kth.se
-#
+# Clara Escorihuela Altaba (19980504-T283) and Joana Palés Huix (19970213-4629)
+# Code for solving problem 2
+
 
 # Load packages
 import numpy as np
