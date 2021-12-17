@@ -23,30 +23,22 @@ from collections import deque, namedtuple
 
 
 class Agent(object):
-    ''' Base agent class
-
-        Args:
-            n_actions (int): actions dimensionality
-
-        Attributes:
-            n_actions (int): where we store the dimensionality of an action
+    ''' Base agent class that moves following policy
     '''
-    def __init__(self, n_actions: int):
-        self.n_actions = n_actions
+    def __init__(self, actor_network):
+        self.network = torch.load(actor_network) #The netwok will be the trained network
 
     def forward(self, state: np.ndarray):
         ''' Performs a forward computation '''
-        pass
-
-    def backward(self):
-        ''' Performs a backward pass on the network '''
-        pass
+        action = self.network.forward(torch.tensor(state)).detach().numpy()
+        return action
 
 
-class RandomAgent(Agent):
-    ''' Agent taking actions uniformly at random, child of the class Agent'''
+
+class RandomAgent():
+    ''' Agent taking actions uniformly at random'''
     def __init__(self, n_actions: int):
-        super(RandomAgent, self).__init__(n_actions)
+        self.n_actions = n_actions
 
     def forward(self, state: np.ndarray) -> np.ndarray:
         ''' Compute a random action in [-1, 1]

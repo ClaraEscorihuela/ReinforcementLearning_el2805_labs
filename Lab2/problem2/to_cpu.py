@@ -2,6 +2,6 @@
 
 import torch
 
-model = torch.load('main_actor.pth', map_location=torch.device('cpu'))
-torch.save(model, 'neural-network-2-actor.pth')
+model = torch.load('c_e1/main_critic.pth', map_location=torch.device('cpu'))
+torch.save(model, 'neural-network-2-critic.pth')
 
