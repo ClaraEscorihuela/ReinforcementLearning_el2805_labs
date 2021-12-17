@@ -31,25 +31,24 @@ class Agent(object):
             n_actions (int): where we store the number of actions
             last_action (int): last action taken by the agent
     '''
-    def __init__(self, n_actions: int):
-        self.n_actions = n_actions
-        self.last_action = None
+    def __init__(self, network):
+        self.network = torch.load(network) #The netwok will be the trained network
 
-    def forward(self, state: np.ndarray):
+    def choose_action(self, state: np.ndarray):
         ''' Performs a forward computation '''
-        pass
-
-    def backward(self):
-        ''' Performs a backward pass on the network '''
-        pass
+        q_values = self.network(torch.tensor([state])) #With the netwok we have trained we look fo the best action
+        action = q_values.max(1)[1].item()
+        return action
 
 
-class RandomAgent(Agent):
+
+
+class RandomAgent():
     ''' Agent taking actions uniformly at random, child of the class Agent'''
     def __init__(self, n_actions: int):
-        super(RandomAgent, self).__init__(n_actions)
+        self.n_actions = n_actions
 
-    def choose_action(self, state: np.ndarray,epsilon) -> int:
+    def choose_action(self, state: np.ndarray) -> int:
         ''' Compute an action uniformly at random across n_actions possible
             choices
 
