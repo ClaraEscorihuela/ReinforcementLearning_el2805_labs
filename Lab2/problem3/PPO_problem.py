@@ -34,6 +34,68 @@ def running_average(x, N):
     return y
 
 
+def test_agent(env, agent, N):
+    """ Let the agent behave with the policy it follows"""
+    env.reset()
+
+    episode_reward_list = []
+    episode_number_of_steps = []
+
+    EPISODES = trange(N, desc='Episodes', leave=True)
+    for i in EPISODES:
+        done = False
+        state = env.reset()
+        total_episode_reward = 0
+        t = 0
+
+        while not done:
+            #THIS IS EXACTLY TTHE SAME AS MAIN BUT WITHOUT TRAINING THE AGENT
+            action = agent.forward(state)
+            # Get next state, reward and done. Append into a buffer
+            next_state, reward, done, _ = env.step(action)
+            # Update episode reward
+            total_episode_reward += reward
+            # Update state for next iteration
+            state = next_state
+            t += 1
+
+        # Append episode reward and total number of steps
+        episode_reward_list.append(total_episode_reward)
+        episode_number_of_steps.append(t)
+
+        # HERE WE SHOULD INCLUDE A CHECK POINT OF THE REWARD, BUT I AM NOT SURE OF HOW MUCH SHOULD I PUT!
+
+        # Close environment
+        env.close()
+
+    return N, episode_reward_list, episode_number_of_steps
+
+def compare_to_random(n_episodes, network_filename = 'main_actor_problem3_v2.pth'):
+
+    env = gym.make('LunarLanderContinuous-v2')
+
+    # Random agent initialization
+    random_agent=RandomAgent(len(env.action_space.high), network_filename)
+    num_episodes_random,random_rewards,_ = test_agent(env, random_agent, n_episodes)
+
+    # DQN agent initialization
+    ppo_agent = Agent(network_filename)
+    num_episodes_dqn,dqn_rewards,_ = test_agent(env, ppo_agent, n_episodes)
+
+    # Plot rewads
+    fig = plt.figure(figsize=(9, 9))
+
+    xr = [i for i in range(1, num_episodes_random+1)]
+    xdqn = [i for i in range(1, num_episodes_dqn+1)]
+    plt.plot(xr, random_rewards, label='Random Agent')
+    plt.plot(xdqn, dqn_rewards, label='Trained DQN Agent')
+    plt.ylim(-400, 400)
+    plt.xlabel('Episodes')
+    plt.ylabel('Reward')
+    plt.title('Reward vs Episodes')
+    plt.legend()
+    plt.show()
+
 def train(N_episodes, discount_factor, n_ep_running_average, lr_actor, lr_critic, buffer_size, epsilon, epochs, legend_main_actor,legend_main_critic ):
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(dev)

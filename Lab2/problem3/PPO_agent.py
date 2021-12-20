@@ -29,22 +29,27 @@ class Agent(object):
         Attributes:
             n_actions (int): where we store the dimensionality of an action
     '''
-    def __init__(self, n_actions: int):
-        self.n_actions = n_actions
+    def __init__(self, actor_network):
+        self.main_actor = torch.load(actor_network)
 
-    def forward(self, state: np.ndarray):
-        ''' Performs a forward computation '''
-        pass
+    def forward(self, state):
+        mu, sig = self.main_actor(torch.tensor(state))    # mu and sigma are tensors of the same dimensionality of the action
+        mu = mu.detach().numpy()
+        std = np.sqrt(sig.detach().numpy())
+        action_1 = np.random.normal(mu[0], std[0])
+        action_2 = np.random.normal(mu[1], std[1])
+        actions = np.clip([action_1, action_2], -1, 1)
+        return actions
 
     def backward(self):
         ''' Performs a backward pass on the network '''
         pass
 
 
-class RandomAgent(Agent):
+class RandomAgent():
     ''' Agent taking actions uniformly at random, child of the class Agent'''
-    def __init__(self, n_actions: int):
-        super(RandomAgent, self).__init__(n_actions)
+    def __init__(self, n_actions: int, actor_network):
+        self.n_actions = n_actions
 
     def forward(self, state: np.ndarray) -> np.ndarray:
         ''' Compute a random action in [-1, 1]
