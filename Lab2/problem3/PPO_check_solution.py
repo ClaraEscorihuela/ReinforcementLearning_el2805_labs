@@ -8,10 +8,11 @@
 # or implied. See the License for the specific language governing
 # permissions and limitations under the License.
 #
-# Course: EL2805 - Reinforcement Learning - Lab 2 Problem 1
+# Course: EL2805 - Reinforcement Learning - Lab 2 Problem 3
 # Code author: [Alessio Russo - alessior@kth.se]
-# Last update: 6th October 2020, by alessior@kth.se
+# Last update: 20th November 2020, by alessior@kth.se
 #
+
 
 # Load packages
 import numpy as np
@@ -32,19 +33,19 @@ def running_average(x, N):
 
 # Load model
 try:
-    model = torch.load('network_main_final_trail')
+    model = torch.load('main_actor_problem3_v2.pth')
     print('Network model: {}'.format(model))
 except:
-    print('File neural-network-1.pth not found!')
+    print('File neural-network-3-actor.pth not found!')
     exit(-1)
 
 # Import and initialize Mountain Car Environment
-env = gym.make('LunarLander-v2')
+env = gym.make('LunarLanderContinuous-v2')
 env.reset()
 
 # Parameters
 N_EPISODES = 50            # Number of episodes to run for trainings
-CONFIDENCE_PASS = 50
+CONFIDENCE_PASS = 125
 
 # Reward
 episode_reward_list = []  # Used to store episodes reward
@@ -52,7 +53,6 @@ episode_reward_list = []  # Used to store episodes reward
 # Simulate episodes
 print('Checking solution...')
 EPISODES = trange(N_EPISODES, desc='Episode: ', leave=True)
-
 for i in EPISODES:
     EPISODES.set_description("Episode {}".format(i))
     # Reset enviroment data
@@ -63,9 +63,11 @@ for i in EPISODES:
         # Get next state and reward.  The done variable
         # will be True if you reached the goal position,
         # False otherwise
-        q_values = model(torch.tensor([state]))
-        _, action = torch.max(q_values, axis=1)
-        next_state, reward, done, _ = env.step(action.item())
+        mu, var = model(torch.tensor([state]))
+        mu = mu.detach().numpy()
+        std = torch.sqrt(var).detach().numpy()
+        actions = np.clip(np.random.normal(mu, std), -1, 1).flatten()
+        next_state, reward, done, _ = env.step(actions)
 
         # Update episode reward
         total_episode_reward += reward
@@ -87,7 +89,7 @@ print('Policy achieves an average total reward of {:.1f} +/- {:.1f} with confide
                 avg_reward,
                 confidence))
 
-if avg_reward - confidence >= CONFIDENCE_PASS:
+if avg_reward - confidence > CONFIDENCE_PASS:
     print('Your policy passed the test!')
 else:
     print("Your policy did not pass the test! The average reward of your policy needs to be greater than {} with 95% confidence".format(CONFIDENCE_PASS))
