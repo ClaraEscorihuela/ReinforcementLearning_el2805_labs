@@ -20,6 +20,7 @@ import torch
 import matplotlib.pyplot as plt
 from tqdm import trange
 from PPO_agent import *
+import matplotlib as mpl
 
 def running_average(x, N):
     ''' Function used to compute the running average
@@ -137,16 +138,16 @@ def optimal_policy_plot(actor_network= 'neural-network-2-actor.phd', critic_netw
     Ys, Ws = np.meshgrid(ys, ws)
 
     policy_network = torch.load(actor_network)
-    Q_network = torch.load(critic_network)
+    V_network = torch.load(critic_network)
 
-    Q = np.zeros((len(ys), len(ws)))
-    action = np.zeros((len(ys), len(ws)))
+    V = np.zeros((len(ys), len(ws)))
+    mu = np.zeros((len(ys), len(ws)))
     for y_idx, y in enumerate(ys):
         for w_idx, w in enumerate(ws):
             state = torch.tensor((0, y, 0, 0, w, 0, 0, 0), dtype=torch.float32)
             a = policy_network(state)
-            action[w_idx, y_idx] = a[1].item()
-            Q[w_idx, y_idx] = Q_network(torch.reshape(state, (1,-1)),torch.reshape(a, (1,-1))).item()  # Max
+            mu[w_idx, y_idx] = a[0][1].item()
+            V[w_idx, y_idx] = V_network(torch.reshape(state, (1,-1))).item()
 
 
             """
@@ -158,37 +159,36 @@ def optimal_policy_plot(actor_network= 'neural-network-2-actor.phd', critic_netw
     #3d plot
     fig = plt.figure()
     ax = fig.gca(projection='3d')
-    surf = ax.plot_surface(Ws, Ys, Q, cmap=mpl.cm.coolwarm)
+    surf = ax.plot_surface(Ws, Ys, V, cmap=mpl.cm.coolwarm)
     ax.set_ylabel('height (y)')
     ax.set_xlabel('angle (ω)')
-    ax.set_zlabel('Q(s(y,ω), π(s))')
+    ax.set_zlabel('V(s(y,ω))')
     plt.show()
 
     # 3d plot
     fig2 = plt.figure()
     ax2 = fig2.gca(projection='3d')
-    surf2 = ax2.plot_surface(Ws, Ys, action)
+    surf2 = ax2.plot_surface(Ws, Ys, mu)
     ax2.set_ylabel('height (y)')
     ax2.set_xlabel('angle (ω)')
-    ax2.set_zlabel('Best Action - Engine direction')
+    ax2.set_zlabel('μ(s,ω)')
     plt.show()
 
     fig3 = plt.figure()
     ax3 = fig3.add_subplot(111)
-    im = ax3.pcolormesh(Ys, Ws, action)
+    im = ax3.pcolormesh(Ys, Ws, mu)
     cbar = fig3.colorbar(im, ticks=[0, 1, 2, 3])
-    ax3.set_ylabel('angle (w)')
+    ax3.set_ylabel('angle (ω)')
     ax3.set_xlabel('height (y)')
     #cbar.ax3.set_yticklabels(['nothing (0)', 'left (1)', 'main (2)', 'right (3)'])
-    ax3.set_title('Best Action - Engine direction')
+    ax3.set_title('μ(s,ω)')
     plt.show()
-
 
 
 
 if __name__ == "__main__":
 
-    n_episodes = 1600  # Number of episodes - 50 for comparative
+    n_episodes = 50  # Number of episodes - 50 for comparative
     discount_factor = 0.99  # Value of gamma
     n_ep_running_average = 50  # Running average of 50 episodes
     lr_actor = 1e-5  # For actor model
@@ -200,10 +200,10 @@ if __name__ == "__main__":
 
 
 
-    train_ex = True
-    comparative = False
-    actor_filename = 'main_actor_problem3_ep0.05.pth'
-    critic_filename = 'main_critic_problem3_ep0.05.pth'
+    train_ex = False
+    comparative = True
+    actor_filename = 'main_actor_problem3.pth'
+    critic_filename = 'main_critic_problem3_v2.pth'
     plot_3d = False
 
     if train_ex == True:

@@ -86,7 +86,7 @@ def compare_to_random(n_episodes, network_filename = ''):
     xr = [i for i in range(1, num_episodes_random+1)]
     xddpg = [i for i in range(1, num_episodes_ddpg+1)]
     plt.plot(xr, random_rewards, label='Random Agent')
-    plt.plot(xddpg, ddpg_rewards, label='Trained DQN Agent')
+    plt.plot(xddpg, ddpg_rewards, label='Trained DDPG Agent')
     plt.ylim(-400, 400)
     plt.xlabel('Episodes')
     plt.ylabel('Reward')
