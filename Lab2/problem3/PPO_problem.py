@@ -70,7 +70,7 @@ def test_agent(env, agent, N):
 
     return N, episode_reward_list, episode_number_of_steps
 
-def compare_to_random(n_episodes, network_filename = 'main_actor_problem3_v2.pth'):
+def compare_to_random(n_episodes, network_filename = 'neural-network-3-actor.pth'):
 
     env = gym.make('LunarLanderContinuous-v2')
 
@@ -191,7 +191,7 @@ def draw_plots(N_episodes, episode_reward_list, n_ep_running_average, episode_nu
 
 
 
-def optimal_policy_plot(actor_network= 'neural-network-2-actor.phd', critic_network= 'neural-network-2-critic.phd'):
+def optimal_policy_plot(actor_network= 'neural-network-3-actor.phd', critic_network= 'neural-network-3-critic.phd'):
     n_y = 100
     n_om = 100
     ys = np.linspace(0, 1.5, n_y)
@@ -264,8 +264,8 @@ if __name__ == "__main__":
 
     train_ex = False
     comparative = True
-    actor_filename = 'main_actor_problem3.pth'
-    critic_filename = 'main_critic_problem3_v2.pth'
+    actor_filename = 'neural-network-3-actor.pth.pth'
+    critic_filename = 'neural-network-3-critic.pth'
     plot_3d = False
 
     if train_ex == True:

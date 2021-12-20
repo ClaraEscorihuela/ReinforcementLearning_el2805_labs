@@ -294,8 +294,8 @@ if __name__ == "__main__":
     sigma = 0.2
 
 
-    train_ex = False
-    comparative = True
+    train_ex = True
+    comparative = False
     actor_filename = 'neural-network-2-actor.pth'
     critic_filename = 'neural-network-2-critic.pth'
     plot_3d = False

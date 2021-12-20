@@ -33,7 +33,7 @@ def running_average(x, N):
 
 # Load model
 try:
-    model = torch.load('main_actor_problem3_v2.pth')
+    model = torch.load('neural-network-3-actor.pth')
     print('Network model: {}'.format(model))
 except:
     print('File neural-network-3-actor.pth not found!')
