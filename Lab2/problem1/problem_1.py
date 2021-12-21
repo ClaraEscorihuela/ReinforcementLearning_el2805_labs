@@ -13,6 +13,10 @@
 # Last update: 6th October 2020, by alessior@kth.se
 #
 
+# Exercise solution by:
+# Clara Escorihuela Altaba - 19980504-T283
+# Joana Palés Huix - 19970213-4629
+
 # Load packages
 import numpy as np
 import gym
