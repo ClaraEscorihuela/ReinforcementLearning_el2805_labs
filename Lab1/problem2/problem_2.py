@@ -1,4 +1,4 @@
-# Clara Escorihuela Altaba (19980504-T283) and Joana Palés Huix (19970213-4629)
+# Authors Clara Escorihuela Altaba (19980504-T283) and Joana Palés Huix (19970213-4629)
 # Code for solving problem 2
 
 
