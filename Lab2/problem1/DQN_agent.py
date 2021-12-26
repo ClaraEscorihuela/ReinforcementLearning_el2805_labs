@@ -36,7 +36,7 @@ class Agent(object):
 
     def choose_action(self, state: np.ndarray):
         ''' Performs a forward computation '''
-        q_values = self.network(torch.tensor([state])) #With the netwok we have trained we look fo the best action
+        q_values = self.network(torch.tensor([state])) #With the network we have trained we look for the best action
         action = q_values.max(1)[1].item()
         return action
 
@@ -64,7 +64,7 @@ class MyNetwork(nn.Module): #--> TA Github
     def __init__(self, input_size, output_size):
         super().__init__()
 
-        #Define number of neurons: we should try different number of neurons (he ficat 16 i32 pq diuen entre 8 i 128)
+        #Define number of neurons:
         num_neurons_l1 = 64
         num_neurons_l2 = 64
 
@@ -72,7 +72,7 @@ class MyNetwork(nn.Module): #--> TA Github
         self.input_layer = nn.Linear(input_size, num_neurons_l1) #inside: (num_inputs = num_outputs_before,num_output)
         self.input_layer_activation = nn.ReLU()
 
-        self.hidden_layer = nn.Linear(num_neurons_l1, num_neurons_l2)  # inside: (num_inputs = num_outputs_before,num_output)
+        self.hidden_layer = nn.Linear(num_neurons_l1, num_neurons_l2)  #inside: (num_inputs = num_outputs_before,num_output)
         self.hidden_layer_activation = nn.ReLU()
 
         # Create output layer
@@ -146,15 +146,15 @@ class DQNAgent(): #class Agent
         self.batch_size = batch_size
         self.discount_factor = discount_factor
         self.learning_rate = lr
-        self.num_actions = num_actions #not really sure how to do this part
-        self.dim_state = dim_state  # not really sure how to do this part
+        self.num_actions = num_actions
+        self.dim_state = dim_state
 
         #ANN
         self.main_ann = MyNetwork(dim_state, num_actions)  #main ANN: ANN to update in every batch size
         self.target_ann = MyNetwork(dim_state, num_actions) #final ANN
 
         #OPITMIZER
-        self.optimizer = optim.Adam(self.main_ann.parameters(), lr=self.learning_rate) #I put the optimizer on the main_ann 'cause is the one we are gonna train
+        self.optimizer = optim.Adam(self.main_ann.parameters(), lr=self.learning_rate)
 
     def choose_action(self, state, epsilon):
         """Function to choose action once the agent is already trained"""
@@ -180,7 +180,7 @@ class DQNAgent(): #class Agent
         # Compute output of the target network given the states batch
         qvalues_targ_ann = self.target_ann(torch.tensor(next_states,
                                       requires_grad=True,
-                                      dtype=torch.float32)) #NEXT STATES! DIF FROM TA
+                                      dtype=torch.float32)) #NEXT STATES!
 
         #Compute the maximum action of the target network
         acmax_targ_ann = qvalues_targ_ann.max(1)[0]
@@ -196,13 +196,13 @@ class DQNAgent(): #class Agent
         q_values = q_values.reshape(-1)  # collapse one dim
 
         # Compute loss function
-        loss = nn.functional.mse_loss(q_values,y_values) #(input, target: el profe fica com a input els valors q surten de q(s,a) ara mateix)
+        loss = nn.functional.mse_loss(q_values,y_values) #(input, target)
 
         # Compute gradient
         loss.backward()
 
         # Clip gradient norm to 1
-        nn.utils.clip_grad_norm_(self.main_ann.parameters(), max_norm=1.) #Recomndation and fone by the profesor, we clip the main network, which is the one used for training
+        nn.utils.clip_grad_norm_(self.main_ann.parameters(), max_norm=1.)
 
         # Perform backward pass (backpropagation)
         self.optimizer.step()

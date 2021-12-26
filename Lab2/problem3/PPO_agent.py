@@ -197,7 +197,6 @@ class CriticNetwork(nn.Module): #Critic is Q
 class PPOAgent(object):
     ''' Base agent class'''
 
-
     def __init__(self, discount_factor, lr_actor, lr_critic, action_size, dim_state, epsilon, dev):
         #Parameters
         self.dev = dev
@@ -236,6 +235,7 @@ class PPOAgent(object):
         return final_prob
 
     def update(self, buffer, M):
+        '''Train agent'''
         state, action, reward, next_state, done = buffer.unzip_buffer()
         time_step = len(state)
 

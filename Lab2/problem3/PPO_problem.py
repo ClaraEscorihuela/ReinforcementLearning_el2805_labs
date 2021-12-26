@@ -17,10 +17,10 @@
 import numpy as np
 import gym
 import torch
-import matplotlib.pyplot as plt
 from tqdm import trange
 from PPO_agent import *
 import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 def running_average(x, N):
     ''' Function used to compute the running average
@@ -49,7 +49,6 @@ def test_agent(env, agent, N):
         t = 0
 
         while not done:
-            #THIS IS EXACTLY TTHE SAME AS MAIN BUT WITHOUT TRAINING THE AGENT
             action = agent.forward(state)
             # Get next state, reward and done. Append into a buffer
             next_state, reward, done, _ = env.step(action)
@@ -63,15 +62,15 @@ def test_agent(env, agent, N):
         episode_reward_list.append(total_episode_reward)
         episode_number_of_steps.append(t)
 
-        # HERE WE SHOULD INCLUDE A CHECK POINT OF THE REWARD, BUT I AM NOT SURE OF HOW MUCH SHOULD I PUT!
-
         # Close environment
         env.close()
 
     return N, episode_reward_list, episode_number_of_steps
 
 def compare_to_random(n_episodes, network_filename = 'neural-network-3-actor.pth'):
-
+    """ Compare random to train agnet, trained agent uses the neural
+    network with weights uploaded in network_filename
+    """
     env = gym.make('LunarLanderContinuous-v2')
 
     # Random agent initialization
@@ -105,7 +104,6 @@ def train(N_episodes, discount_factor, n_ep_running_average, lr_actor, lr_critic
     env.reset()
     action_size = len(env.action_space.high)  # dimensionality of the action
     dim_state = len(env.observation_space.high)  # State dimensionality
-
 
     # Reward
     episode_reward_list = []  # this list contains the total reward per episode
@@ -211,13 +209,6 @@ def optimal_policy_plot(actor_network= 'neural-network-3-actor.phd', critic_netw
             mu[w_idx, y_idx] = a[0][1].item()
             V[w_idx, y_idx] = V_network(torch.reshape(state, (1,-1))).item()
 
-
-            """
-    values_function = np.array([[(torch.max(Q_network(torch.tensor([states[w][y]]))).item()) for y in range(len(ys))]for w in range(len(ws))])
-    action = np.array([[(torch.argmax(Q_network(torch.tensor([states[w][y]]))).item()) for y in range(len(ys))]for w in range(len(ws))])
-"""
-            #plot should be ys, ws, values
-
     #3d plot
     fig = plt.figure()
     ax = fig.gca(projection='3d')
@@ -259,8 +250,6 @@ if __name__ == "__main__":
     d = 2
     epochs = 10 #M
     epsilon = 0.05
-
-
 
     train_ex = False
     comparative = True

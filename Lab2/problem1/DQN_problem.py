@@ -16,14 +16,10 @@
 # Load packages
 import numpy as np
 import gym
-import torch
-import matplotlib.pyplot as plt
-from tqdm import trange
 from DQN_agent import *
-import pylab
-from mpl_toolkits.mplot3d import Axes3D
+from tqdm import trange
 import matplotlib as mpl
-
+import matplotlib.pyplot as plt
 
 
 #Parameters for epsilon measurments
@@ -44,13 +40,17 @@ def running_average(x, N):
     return y
 
 def epsilon_decay_exponencial(k, N_episodes):
+    """ Exponential epsilon decay calculation
+    """
+
     epsilon = max(min_epsilon, max_epsilon * (min_epsilon / max_epsilon) ** ((k - 1) / (N_episodes * Z - 1)))
     return epsilon
 
 def test_agent(env, agent, N):
-    """ Let the agent behave with the policy it follows"""
-    env.reset()
+    """ Let the agent behave with the policy it follows
+    """
 
+    env.reset()
     episode_reward_list = []
     episode_number_of_steps = []
 
@@ -62,7 +62,6 @@ def test_agent(env, agent, N):
         t = 0
 
         while not done:
-            #THIS IS EXACTLY TTHE SAME AS MAIN BUT WITHOUT TRAINING THE AGENT
             action = agent.choose_action(state)
             # Get next state, reward and done. Append into a buffer
             next_state, reward, done, _ = env.step(action)
@@ -76,14 +75,14 @@ def test_agent(env, agent, N):
         episode_reward_list.append(total_episode_reward)
         episode_number_of_steps.append(t)
 
-        # HERE WE SHOULD INCLUDE A CHECK POINT OF THE REWARD, BUT I AM NOT SURE OF HOW MUCH SHOULD I PUT!
-
         # Close environment
         env.close()
 
     return N, episode_reward_list, episode_number_of_steps
 
 def compare_to_random(n_episodes, network_filename = ''):
+    """ Compare random with trained agent
+    """
 
     env = gym.make('LunarLander-v2')
 
@@ -110,6 +109,8 @@ def compare_to_random(n_episodes, network_filename = ''):
     plt.show()
 
 def train(N_episodes, discount_factor, n_ep_running_average, lr, batch_size, buffer_size, legend_main, legend_target):
+    """ Train agent
+    """
 
     #dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #print("Using", dev)
@@ -177,8 +178,6 @@ def train(N_episodes, discount_factor, n_ep_running_average, lr, batch_size, buf
         episode_reward_list.append(total_episode_reward)
         episode_number_of_steps.append(t)
 
-        #HERE WE SHOULD INCLUDE A CHECK POINT OF THE REWARD, BUT I AM NOT SURE OF HOW MUCH SHOULD I PUT!
-
         # Close environment
         env.close()
 
@@ -196,6 +195,8 @@ def train(N_episodes, discount_factor, n_ep_running_average, lr, batch_size, buf
 
 
 def draw_plots(N_episodes, episode_reward_list, n_ep_running_average, episode_number_of_steps):
+    """ Draw total reward and number of steps plot
+    """
     # Plot Rewards and steps
     fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(16, 9))
     ax[0].plot([i for i in range(1, N_episodes+1)], episode_reward_list, label='Episode reward')
@@ -218,6 +219,9 @@ def draw_plots(N_episodes, episode_reward_list, n_ep_running_average, episode_nu
     plt.show()
 
 def optimal_policy_plot(network= 'network_main_1.phd'):
+    """ 3D plot for optimal policy
+    """
+
     n_y = 100
     n_om = 100
     ys = np.linspace(0, 1.5, n_y)
@@ -234,12 +238,6 @@ def optimal_policy_plot(network= 'network_main_1.phd'):
             state = torch.tensor((0, y, 0, 0, w, 0, 0, 0), dtype=torch.float32)
             Q[w_idx, y_idx] = Q_network(state).max(0)[0].item()  # Max
             action[w_idx,y_idx] = torch.argmax(Q_network(state)).item()
-
-            """
-    values_function = np.array([[(torch.max(Q_network(torch.tensor([states[w][y]]))).item()) for y in range(len(ys))]for w in range(len(ws))])
-    action = np.array([[(torch.argmax(Q_network(torch.tensor([states[w][y]]))).item()) for y in range(len(ys))]for w in range(len(ws))])
-"""
-            #plot should be ys, ws, values
 
     #3d plot
     fig = plt.figure()
@@ -268,9 +266,6 @@ def optimal_policy_plot(network= 'network_main_1.phd'):
     #cbar.ax3.set_yticklabels(['nothing (0)', 'left (1)', 'main (2)', 'right (3)'])
     ax3.set_title('Best Action')
     plt.show()
-
-
-
 
 
 

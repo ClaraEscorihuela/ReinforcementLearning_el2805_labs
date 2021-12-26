@@ -14,9 +14,9 @@
 #
 
 # Load packages
-import numpy as np
 import gym
 import pickle
+import numpy as np
 from tqdm import trange
 
 # Import and initialize Mountain Car Environment

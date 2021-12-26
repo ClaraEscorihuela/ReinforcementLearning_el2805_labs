@@ -3,11 +3,12 @@
 
 
 # Load packages
-import numpy as np
 import gym
 import torch
-import matplotlib.pyplot as plt
 import pickle
+import numpy as np
+import matplotlib.pyplot as plt
+
 
 # Import and initialize Mountain Car Environment
 env = gym.make('MountainCar-v0')
@@ -19,11 +20,8 @@ low, high = env.observation_space.low, env.observation_space.high
 #Vectors Definition
 p = 2
 ETA = np.array([[i,j] for i in range(p+1) for j in range(p+1)])
-#ETA = ETA[1:,:] #LET'S SEE WHAT HAPPENS IF WE ELIMINATE THE [0,0]
+#ETA = ETA[1:,:] #WHAT HAPPENS IF WE ELIMINATE THE [0,0]?
 W = np.zeros((k,np.shape(ETA)[0]))
-
-# Scaling the fourier basis
-
 
 # Parameters
 N_episodes = 600        # Number of episodes to run for training
@@ -99,9 +97,8 @@ def scaling_basis_function(ETA):
     alpha = np.divide(alpha_set, eta_normalitzation)
     return alpha
 
-#--------------------------------------------------------------------------------------------------
-# Training process
-#-------------------------------------------------------------------------------------------------
+
+#### Training process
 if scaling_basis:
     alpha = scaling_basis_function(ETA)
 else:
@@ -162,7 +159,6 @@ for i in range(N_episodes):
     if alpha_reduction and total_episode_reward > -200:
         #ALPHA REDUCTION WORKS EXTREMELLY WELL!!!
         # If win, scale alpha by .8 or .6 if the agent wins
-        reduce_counter += 1
         alpha *= 0.9 - 0.2 * (total_episode_reward > -130)
 
     # Append episode reward

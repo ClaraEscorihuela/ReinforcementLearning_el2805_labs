@@ -15,11 +15,12 @@
 
 # Load packages
 import gym
-import matplotlib.pyplot as plt
 from tqdm import trange
 from DDPG_agent import *
-from DDPG_soft_updates import soft_updates
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+from DDPG_soft_updates import soft_updates
+
 
 
 def running_average(x, N):
@@ -239,13 +240,6 @@ def optimal_policy_plot(actor_network= 'neural-network-2-actor.phd', critic_netw
             a = policy_network(state)
             action[w_idx, y_idx] = a[1].item()
             Q[w_idx, y_idx] = Q_network(torch.reshape(state, (1,-1)),torch.reshape(a, (1,-1))).item()  # Max
-
-
-            """
-    values_function = np.array([[(torch.max(Q_network(torch.tensor([states[w][y]]))).item()) for y in range(len(ys))]for w in range(len(ws))])
-    action = np.array([[(torch.argmax(Q_network(torch.tensor([states[w][y]]))).item()) for y in range(len(ys))]for w in range(len(ws))])
-"""
-            #plot should be ys, ws, values
 
     #3d plot
     fig = plt.figure()

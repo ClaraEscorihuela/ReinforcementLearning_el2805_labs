@@ -165,13 +165,6 @@ class Maze:
 
                 for i, next_s in enumerate(next_s_list):
                     transition_probabilities[next_s, s, a] = 1 * minotaur_prob[i]
-                """
-                #WE HAVE CHANGED THIS PART FOR THE NEW STATE!!!!!!!!!!!!!!!!!!
-                if s == -1:
-                    transition_probabilities[next_s, s, a] = 0
-                    if next_s == -1:
-                        transition_probabilities[next_s, s, a] = 1
-                """
 
         return transition_probabilities
 
