@@ -1,4 +1,5 @@
 # EL2805 Lab Assignments
+Laboratory assignments from the Reinforcement Learning (RL) Course at KTH Royal Institute of Technology. 
 
 ### Lab 1:
 #### Problem 1: The Maze and the Random Minotaur
